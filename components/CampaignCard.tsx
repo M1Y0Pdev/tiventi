@@ -22,7 +22,7 @@ const CampaignCard = ({ campaign, index = 0 }: CampaignCardProps) => {
       className="relative group overflow-hidden rounded-2xl shadow-xl"
     >
       <Link href={campaign.link}>
-        <div className="relative h-64 md:h-80">
+        <div className="relative h-64 md:h-80 overflow-hidden">
           <Image
             src={campaign.image}
             alt={campaign.title}

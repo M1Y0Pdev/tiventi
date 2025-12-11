@@ -1,11 +1,13 @@
 'use client'
 
+import { useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { CheckCircle, Package, Mail, ArrowRight } from 'lucide-react'
 
 export default function CheckoutSuccessPage() {
-  const orderNumber = 'TIV' + Math.random().toString(36).substr(2, 9).toUpperCase()
+  const searchParams = useSearchParams()
+  const orderId = searchParams.get('orderId') || 'N/A'
 
   return (
     <div className="pt-20 min-h-screen bg-gray-50">
@@ -51,7 +53,7 @@ export default function CheckoutSuccessPage() {
               className="bg-gray-50 rounded-lg p-6 mb-8"
             >
               <p className="text-sm text-gray-500 mb-2">Order Number</p>
-              <p className="text-2xl font-bold text-tiventi-orange">{orderNumber}</p>
+              <p className="text-2xl font-bold text-tiventi-orange">{orderId}</p>
             </motion.div>
 
             <motion.div

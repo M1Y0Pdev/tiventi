@@ -1,29 +1,45 @@
-'use client'
-
-import { motion } from 'framer-motion'
 import Hero from '@/components/Hero'
 import FeaturedSlider from '@/components/FeaturedSlider'
 import CampaignCard from '@/components/CampaignCard'
-import { campaigns, testimonials } from '@/lib/data'
+import { campaigns, testimonials } from '@/lib/data' // Note: This will be dynamic in the future
 import { Star } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
+import { Product } from '@/types'
 
-export default function Home() {
+async function getBestSellerProducts(): Promise<Product[]> {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*, categories(name)')
+    .eq('is_best_seller', true)
+    .limit(8);
+
+  if (error) {
+    console.error('Error fetching best seller products:', error);
+    return [];
+  }
+  
+  return data.map((product: any) => ({
+    ...product,
+    category_name: product.categories?.name || null,
+    categories: undefined,
+  }));
+}
+
+export default async function Home() {
+  const bestSellerProducts = await getBestSellerProducts();
+
   return (
     <>
       {/* Hero Section */}
       <Hero />
 
       {/* Featured Products */}
-      <FeaturedSlider />
+      <FeaturedSlider featuredProducts={bestSellerProducts} />
 
       {/* Campaign Section */}
       <section className="py-16 bg-white">
         <div className="container-custom">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
+          <div
             className="text-center mb-12"
           >
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
@@ -32,7 +48,7 @@ export default function Home() {
             <p className="text-gray-600 max-w-2xl mx-auto">
               Benzersiz tekliflerimizi ve sezonluk koleksiyonlarımızı kaçırmayın
             </p>
-          </motion.div>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {campaigns.map((campaign, index) => (
@@ -45,11 +61,7 @@ export default function Home() {
       {/* Testimonials */}
       <section className="py-16 bg-gray-50">
         <div className="container-custom">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
+          <div
             className="text-center mb-12"
           >
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
@@ -58,16 +70,12 @@ export default function Home() {
             <p className="text-gray-600 max-w-2xl mx-auto">
               Tiventi'ye güvenen binlerce memnun müşteriye katılın
             </p>
-          </motion.div>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map((testimonial, index) => (
-              <motion.div
+            {testimonials.map((testimonial) => (
+              <div
                 key={testimonial.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                viewport={{ once: true }}
                 className="bg-white p-6 rounded-lg shadow-lg"
               >
                 <div className="flex mb-4">
@@ -77,7 +85,7 @@ export default function Home() {
                 </div>
                 <p className="text-gray-600 mb-4 italic">"{testimonial.comment}"</p>
                 <p className="font-semibold text-gray-900">- {testimonial.name}</p>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
@@ -87,11 +95,7 @@ export default function Home() {
       <section className="py-16 bg-white">
         <div className="container-custom">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              viewport={{ once: true }}
+            <div
               className="group"
             >
               <div className="w-16 h-16 mx-auto mb-4 bg-tiventi-orange/10 rounded-full flex items-center justify-center group-hover:bg-tiventi-orange group-hover:text-white transition-all">
@@ -101,13 +105,9 @@ export default function Home() {
               </div>
               <h3 className="text-lg font-semibold mb-2">Premium Kalite</h3>
               <p className="text-gray-600 text-sm">Mükemmel konfor için özenle seçilmiş malzemeler</p>
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              viewport={{ once: true }}
+            <div
               className="group"
             >
               <div className="w-16 h-16 mx-auto mb-4 bg-tiventi-orange/10 rounded-full flex items-center justify-center group-hover:bg-tiventi-orange group-hover:text-white transition-all">
@@ -117,13 +117,9 @@ export default function Home() {
               </div>
               <h3 className="text-lg font-semibold mb-2">Hızlı Teslimat</h3>
               <p className="text-gray-600 text-sm">500 TL üz eri siparişlerde ücretsiz kargo</p>
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              viewport={{ once: true }}
+            <div
               className="group"
             >
               <div className="w-16 h-16 mx-auto mb-4 bg-tiventi-orange/10 rounded-full flex items-center justify-center group-hover:bg-tiventi-orange group-hover:text-white transition-all">
@@ -133,13 +129,9 @@ export default function Home() {
               </div>
               <h3 className="text-lg font-semibold mb-2">Kolay İade</h3>
               <p className="text-gray-600 text-sm">Huzurunuz için 30 günlük iade politikası</p>
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              viewport={{ once: true }}
+            <div
               className="group"
             >
               <div className="w-16 h-16 mx-auto mb-4 bg-tiventi-orange/10 rounded-full flex items-center justify-center group-hover:bg-tiventi-orange group-hover:text-white transition-all">
@@ -149,7 +141,7 @@ export default function Home() {
               </div>
               <h3 className="text-lg font-semibold mb-2">Güvenli Ödeme</h3>
               <p className="text-gray-600 text-sm">Tran saksiyonlarınız her zaman korunur</p>
-            </motion.div>
+            </div>
           </div>
         </div>
       </section>

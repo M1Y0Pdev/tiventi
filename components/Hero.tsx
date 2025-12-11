@@ -73,7 +73,7 @@ const Hero = () => {
   }
 
   return (
-    <section className="relative h-screen w-full overflow-hidden">
+    <section className="relative h-screen w-full overflow-hidden z-0">
       {/* Background Images with Animation */}
       <AnimatePresence mode="wait">
         <motion.div

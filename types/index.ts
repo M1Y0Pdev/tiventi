@@ -1,20 +1,25 @@
+export interface Category {
+  id: number;
+  name: string;
+  created_at: string;
+}
+
 export interface Product {
-  id: string
-  name: string
-  price: number
-  originalPrice?: number
-  image: string
-  images?: string[]
-  category: 'bra' | 'panty' | 'sets' | 'nightwear'
-  colors: string[]
-  sizes: string[]
-  description?: string
-  material?: string
-  careInstructions?: string
-  inStock: boolean
-  isNew?: boolean
-  isBestSeller?: boolean
-  discount?: number
+  id: number;
+  name: string;
+  description: string | null;
+  price: number;
+  original_price: number | null;
+  image: string | null;
+  stock: number;
+  category_id: number | null;
+  category_name?: string; // Will be populated by joining with 'categories' table
+  colors: string[] | null;
+  sizes: string[] | null;
+  is_new: boolean;
+  is_best_seller: boolean;
+  discount: number | null;
+  created_at: string;
 }
 
 export interface CartItem {

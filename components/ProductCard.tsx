@@ -22,8 +22,8 @@ const ProductCard = ({ product, index = 0 }: ProductCardProps) => {
       className="group relative bg-white rounded-lg overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300"
     >
       {/* Badges */}
-      <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-        {product.isNew && (
+      <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 overflow-hidden">
+        {product.is_new && (
           <span className="bg-tiventi-orange text-white px-3 py-1 rounded-full text-xs font-semibold">
             YENİ
           </span>
@@ -33,7 +33,7 @@ const ProductCard = ({ product, index = 0 }: ProductCardProps) => {
             -{product.discount}%
           </span>
         )}
-        {product.isBestSeller && (
+        {product.is_best_seller && (
           <span className="bg-black text-white px-3 py-1 rounded-full text-xs font-semibold">
             ÇOK SATAN
           </span>
@@ -62,7 +62,7 @@ const ProductCard = ({ product, index = 0 }: ProductCardProps) => {
       <Link href={`/products/${product.id}`}>
         <div className="relative h-80 overflow-hidden bg-gray-100">
           <Image
-            src={product.image}
+            src={product.image || 'https://placehold.co/600x400'}
             alt={product.name}
             fill
             className="object-cover group-hover:scale-110 transition-transform duration-500"
@@ -94,22 +94,22 @@ const ProductCard = ({ product, index = 0 }: ProductCardProps) => {
           </h3>
         </Link>
         
-        <p className="text-sm text-gray-500 mt-1 capitalize">{product.category}</p>
+        <p className="text-sm text-gray-500 mt-1 capitalize">{product.category_name}</p>
         
         <div className="flex items-center gap-2 mt-3">
           <span className="text-xl font-bold text-gray-900">
             {formatPrice(product.price)}
           </span>
-          {product.originalPrice && (
+          {product.original_price && (
             <span className="text-sm text-gray-400 line-through">
-              {formatPrice(product.originalPrice)}
+              {formatPrice(product.original_price)}
             </span>
           )}
         </div>
 
         {/* Color Options */}
         <div className="flex gap-1 mt-3">
-          {product.colors.slice(0, 4).map((color) => (
+          {product.colors?.slice(0, 4).map((color) => (
             <div
               key={color}
               className="w-5 h-5 rounded-full border border-gray-300"
@@ -128,7 +128,7 @@ const ProductCard = ({ product, index = 0 }: ProductCardProps) => {
               title={color}
             />
           ))}
-          {product.colors.length > 4 && (
+          {product.colors && product.colors.length > 4 && (
             <span className="text-xs text-gray-500 ml-1">+{product.colors.length - 4}</span>
           )}
         </div>

@@ -1,170 +1,203 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
-import CheckoutForm from '@/components/CheckoutForm'
-import { products } from '@/lib/data'
+import { useCart } from '@/context/CartProvider'
+import { createClient } from '@/lib/supabase/client'
 import { formatPrice } from '@/lib/utils'
-import { Lock, Shield } from 'lucide-react'
 import Image from 'next/image'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { ShoppingBag } from 'lucide-react'
+import CheckoutAddressForm from '@/components/CheckoutAddressForm'; // New component for address selection
+import { placeOrder } from '@/app/checkout/order-actions'; // Import the Server Action
+import { getUserIp } from '@/lib/actions/get-ip'; // Import the new Server Action to get IP
+
+// Define UserAddress type here for now, ideally this should be in types/index.ts
+interface UserAddress {
+    id: number;
+    title: string | null;
+    full_name: string;
+    phone: string;
+    address_line1: string;
+    address_line2: string | null;
+    city: string;
+    state: string | null;
+    zip_code: string | null;
+    country: string;
+    is_default: boolean;
+}
 
 export default function CheckoutPage() {
-  const router = useRouter()
-  const [isProcessing, setIsProcessing] = useState(false)
+  const { cartItems, cartCount, totalPrice, isLoading, clearCart } = useCart();
+  const router = useRouter();
+  const supabase = createClient();
+  const [user, setUser] = useState<any>(null); // To store user from auth
+  const [addresses, setAddresses] = useState<UserAddress[]>([]); // To store user addresses
+  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
+  const [orderLoading, setOrderLoading] = useState(false);
+  const [orderMessage, setOrderMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Mock cart items for demo
-  const cartItems = [
-    {
-      product: products[0],
-      quantity: 2,
-      selectedSize: '34B',
-      selectedColor: 'Black'
-    },
-    {
-      product: products[2],
-      quantity: 1,
-      selectedSize: 'M',
-      selectedColor: 'Red'
+  useEffect(() => {
+    const checkUserAndCart = async () => {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      setUser(currentUser);
+
+      if (isLoading) return; // Wait for cart to load
+
+      if (!currentUser) {
+        // Redirect to login if not logged in
+        router.push('/login?redirect=/checkout');
+        return;
+      }
+      
+      if (cartItems.length === 0 && !isLoading) {
+        // Redirect to cart if cart is empty
+        router.push('/cart');
+        return;
+      }
+
+      // Fetch addresses if user is logged in
+      const { data: userAddresses, error } = await supabase
+        .from('user_addresses')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('is_default', { ascending: false })
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching addresses:', error);
+      } else {
+        setAddresses(userAddresses as UserAddress[]);
+        const defaultAddress = userAddresses.find(addr => addr.is_default);
+        if (defaultAddress) {
+            setSelectedAddressId(defaultAddress.id);
+        } else if (userAddresses.length > 0) {
+            setSelectedAddressId(userAddresses[0].id); // Select first if no default
+        }
+      }
+    };
+
+    checkUserAndCart();
+  }, [isLoading, cartItems, router, supabase]);
+
+  const handlePlaceOrder = async () => {
+    setOrderLoading(true);
+    setOrderMessage(null);
+
+    if (cartItems.length === 0) {
+        setOrderMessage({ type: 'error', text: 'Sepetiniz boş.' });
+        setOrderLoading(false);
+        return;
     }
-  ]
 
-  const subtotal = cartItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0)
-  const shipping = subtotal > 50 ? 0 : 9.99
-  const tax = subtotal * 0.08
-  const total = subtotal + shipping + tax
+    if (!selectedAddressId) {
+        setOrderMessage({ type: 'error', text: 'Lütfen bir teslimat adresi seçin.' });
+        setOrderLoading(false);
+        return;
+    }
 
-  const handleCheckoutSubmit = async (formData: any) => {
-    setIsProcessing(true)
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    // Redirect to success page
-    router.push('/checkout/success')
+    // 1. Get User IP
+    const userIp = await getUserIp();
+
+    // 2. Call the Server Action
+    const result = await placeOrder(selectedAddressId, cartItems, userIp);
+
+    if (result.success) {
+        setOrderMessage({ type: 'success', text: result.message });
+        clearCart(); // Clear the client-side cart after order is placed
+        
+        // 3. Redirect to PayTR (if parameters are provided)
+        if (result.paytrParams) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = 'https://www.paytr.com/odeme/guvenli/pos.js'; // PayTR payment gateway URL
+            form.target = '_self'; // Open in the same window
+
+            for (const key in result.paytrParams) {
+                if (Object.prototype.hasOwnProperty.call(result.paytrParams, key)) {
+                    const hiddenField = document.createElement('input');
+                    hiddenField.type = 'hidden';
+                    hiddenField.name = key;
+                    hiddenField.value = (result.paytrParams as any)[key]; // Type assertion to access value
+                    form.appendChild(hiddenField);
+                }
+            }
+            document.body.appendChild(form);
+            form.submit(); // Submit the form to PayTR
+        } else {
+            router.push(`/checkout/success?orderId=${result.orderId}`); // Fallback if no paytrParams (e.g., test mode)
+        }
+    } else {
+        setOrderMessage({ type: 'error', text: result.message });
+    }
+    setOrderLoading(false);
+  };
+
+  if (isLoading || !user || cartItems.length === 0) {
+    // Show a loading/redirecting state
+    return (
+      <div className="pt-20 min-h-screen flex items-center justify-center">
+        <p>Yükleniyor veya yönlendiriliyor...</p>
+      </div>
+    );
   }
 
   return (
-    <div className="pt-20 min-h-screen bg-gray-50">
+    <div className="pt-20 bg-gray-50 min-h-screen">
       <div className="container-custom py-12">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <h1 className="text-3xl font-bold">Checkout</h1>
-          <div className="flex items-center gap-2 mt-2 text-sm text-gray-600">
-            <Lock size={16} />
-            <span>Secure checkout powered by SSL encryption</span>
-          </div>
-        </motion.div>
+        <h1 className="text-3xl font-bold mb-8">Ödeme Sayfası</h1>
+        {orderMessage && (
+            <div className={`p-4 mb-4 rounded-lg text-white ${orderMessage.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
+                {orderMessage.text}
+            </div>
+        )}
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Adres ve Ödeme Bilgileri */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Adres Bölümü */}
+            <CheckoutAddressForm initialAddresses={addresses} onSelectAddress={setSelectedAddressId} selectedAddressId={selectedAddressId}/>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Checkout Form */}
-          <div className="lg:col-span-2">
-            <CheckoutForm onSubmit={handleCheckoutSubmit} />
+            {/* Ödeme Yöntemi */}
+            <div className="bg-white p-6 rounded-lg shadow">
+              <h2 className="text-xl font-semibold mb-4 border-b pb-4">Ödeme Yöntemi</h2>
+              {/* PayTR integration will redirect, no in-page display here */}
+              {/* Buraya ödeme yöntemi seçim bileşenleri gelecek */}
+            </div>
           </div>
 
-          {/* Order Summary */}
+          {/* Sipariş Özeti */}
           <div className="lg:col-span-1">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="bg-white rounded-lg shadow-md p-6 sticky top-24"
-            >
-              <h2 className="text-xl font-bold mb-6">Order Summary</h2>
-
-              {/* Cart Items */}
-              <div className="space-y-4 mb-6">
-                {cartItems.map((item, index) => (
-                  <div key={index} className="flex gap-3">
-                    <div className="relative w-16 h-16 bg-gray-100 rounded overflow-hidden">
-                      <Image
-                        src={item.product.image}
-                        alt={item.product.name}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="text-sm font-medium">{item.product.name}</h4>
-                      <p className="text-xs text-gray-500">
-                        {item.selectedColor} / {item.selectedSize} / Qty: {item.quantity}
-                      </p>
-                      <p className="text-sm font-semibold mt-1">
-                        {formatPrice(item.product.price * item.quantity)}
-                      </p>
-                    </div>
+            <div className="bg-white p-6 rounded-lg shadow sticky top-24">
+              <h2 className="text-xl font-semibold mb-4 border-b pb-4">Sipariş Özeti</h2>
+              <div className="space-y-3 mb-4">
+                {cartItems.map(item => (
+                  <div key={`${item.product.id}-${item.selectedSize}-${item.selectedColor}`} className="flex justify-between items-center text-sm">
+                    <span className="text-gray-700">{item.product.name} ({item.selectedSize}, {item.selectedColor}) x {item.quantity}</span>
+                    <span className="font-semibold">{formatPrice(item.product.price * item.quantity)}</span>
                   </div>
                 ))}
               </div>
-
-              {/* Price Breakdown */}
-              <div className="space-y-3 border-t pt-4">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Subtotal</span>
-                  <span>{formatPrice(subtotal)}</span>
+              <div className="space-y-3 pt-4 border-t">
+                <div className="flex justify-between font-medium">
+                  <span>Ara Toplam</span>
+                  <span>{formatPrice(totalPrice)}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Shipping</span>
-                  <span>{shipping === 0 ? 'FREE' : formatPrice(shipping)}</span>
+                <div className="flex justify-between font-medium">
+                  <span>Kargo</span>
+                  <span>{formatPrice(0)}</span> {/* Şimdilik 0 */}
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Tax</span>
-                  <span>{formatPrice(tax)}</span>
+                <div className="flex justify-between font-bold text-lg border-t pt-4 mt-2">
+                  <span>Toplam</span>
+                  <span>{formatPrice(totalPrice)}</span>
                 </div>
               </div>
-
-              <div className="border-t mt-4 pt-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-lg font-bold">Total</span>
-                  <span className="text-2xl font-bold text-tiventi-orange">
-                    {formatPrice(total)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Security Badges */}
-              <div className="mt-6 pt-6 border-t">
-                <div className="flex items-center justify-center gap-4">
-                  <Shield className="text-green-600" size={20} />
-                  <span className="text-xs text-gray-600">100% Secure Payment</span>
-                </div>
-                <div className="flex justify-center gap-2 mt-4">
-                  <div className="w-12 h-8 bg-gray-200 rounded flex items-center justify-center text-xs">
-                    VISA
-                  </div>
-                  <div className="w-12 h-8 bg-gray-200 rounded flex items-center justify-center text-xs">
-                    MC
-                  </div>
-                  <div className="w-12 h-8 bg-gray-200 rounded flex items-center justify-center text-xs">
-                    AMEX
-                  </div>
-                  <div className="w-12 h-8 bg-gray-200 rounded flex items-center justify-center text-xs">
-                    PP
-                  </div>
-                </div>
-              </div>
-            </motion.div>
+              <button onClick={handlePlaceOrder} disabled={orderLoading || !selectedAddressId} className="w-full mt-6 bg-tiventi-orange text-white font-bold py-3 rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50">
+                {orderLoading ? 'Sipariş Oluşturuluyor...' : 'Siparişi Tamamla'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
-
-      {/* Processing Overlay */}
-      {isProcessing && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="bg-white rounded-lg p-8 text-center"
-          >
-            <div className="w-16 h-16 border-4 border-tiventi-orange border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-lg font-semibold">Processing your order...</p>
-            <p className="text-gray-600 mt-2">Please wait while we confirm your payment</p>
-          </motion.div>
-        </div>
-      )}
     </div>
-  )
+  );
 }

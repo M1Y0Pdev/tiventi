@@ -3,63 +3,32 @@
 import { motion } from 'framer-motion'
 import { Filter, X } from 'lucide-react'
 import { useState } from 'react'
+import { Category } from '@/types'
 
 interface CategoryFilterProps {
-  onFilterChange: (filters: FilterState) => void
+  onFilterChange: (selectedCategories: string[]) => void
+  categories: Category[]
 }
 
-interface FilterState {
-  category: string[]
-  color: string[]
-  priceRange: [number, number]
-}
-
-const CategoryFilter = ({ onFilterChange }: CategoryFilterProps) => {
+const CategoryFilter = ({ onFilterChange, categories = [] }: CategoryFilterProps) => {
   const [isOpen, setIsOpen] = useState(false)
-  const [filters, setFilters] = useState<FilterState>({
-    category: [],
-    color: [],
-    priceRange: [0, 200]
-  })
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
 
-  const categories = ['bra', 'panty', 'sets', 'nightwear']
-  const colors = ['Black', 'White', 'Red', 'Pink', 'Nude', 'Gray']
-
-  const handleCategoryToggle = (category: string) => {
-    const updated = filters.category.includes(category)
-      ? filters.category.filter(c => c !== category)
-      : [...filters.category, category]
+  const handleCategoryToggle = (categoryName: string) => {
+    const updated = selectedCategories.includes(categoryName)
+      ? selectedCategories.filter(c => c !== categoryName)
+      : [...selectedCategories, categoryName]
     
-    const newFilters = { ...filters, category: updated }
-    setFilters(newFilters)
-    onFilterChange(newFilters)
-  }
-
-  const handleColorToggle = (color: string) => {
-    const updated = filters.color.includes(color)
-      ? filters.color.filter(c => c !== color)
-      : [...filters.color, color]
-    
-    const newFilters = { ...filters, color: updated }
-    setFilters(newFilters)
-    onFilterChange(newFilters)
-  }
-
-  const handlePriceChange = (value: number) => {
-    const newFilters = { ...filters, priceRange: [0, value] as [number, number] }
-    setFilters(newFilters)
-    onFilterChange(newFilters)
+    setSelectedCategories(updated)
+    onFilterChange(updated)
   }
 
   const clearFilters = () => {
-    const newFilters = {
-      category: [],
-      color: [],
-      priceRange: [0, 200] as [number, number]
-    }
-    setFilters(newFilters)
-    onFilterChange(newFilters)
+    setSelectedCategories([])
+    onFilterChange([])
   }
+
+  const hasActiveFilters = selectedCategories.length > 0;
 
   return (
     <>
@@ -102,80 +71,30 @@ const CategoryFilter = ({ onFilterChange }: CategoryFilterProps) => {
             <div className="space-y-2">
               {categories.map((category) => (
                 <label
-                  key={category}
+                  key={category.id}
                   className="flex items-center gap-2 cursor-pointer hover:text-tiventi-orange transition-colors"
                 >
                   <input
                     type="checkbox"
-                    checked={filters.category.includes(category)}
-                    onChange={() => handleCategoryToggle(category)}
+                    checked={selectedCategories.includes(category.name)}
+                    onChange={() => handleCategoryToggle(category.name)}
                     className="w-4 h-4 text-tiventi-orange focus:ring-tiventi-orange"
                   />
-                  <span className="capitalize">{category}</span>
+                  <span className="capitalize">{category.name}</span>
                 </label>
               ))}
             </div>
           </div>
 
-          {/* Colors */}
-          <div className="mb-8">
-            <h4 className="font-semibold mb-4">Color</h4>
-            <div className="grid grid-cols-3 gap-2">
-              {colors.map((color) => (
-                <button
-                  key={color}
-                  onClick={() => handleColorToggle(color)}
-                  className={`flex items-center gap-2 p-2 rounded-lg border transition-all ${
-                    filters.color.includes(color)
-                      ? 'border-tiventi-orange bg-orange-50'
-                      : 'border-gray-200 hover:border-gray-400'
-                  }`}
-                >
-                  <div
-                    className="w-4 h-4 rounded-full border border-gray-300"
-                    style={{
-                      backgroundColor: 
-                        color === 'White' ? '#ffffff' :
-                        color === 'Black' ? '#000000' :
-                        color === 'Red' ? '#ef4444' :
-                        color === 'Pink' ? '#ec4899' :
-                        color === 'Nude' ? '#f5deb3' :
-                        color === 'Gray' ? '#6b7280' :
-                        '#e5e5e5'
-                    }}
-                  />
-                  <span className="text-sm">{color}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Price Range */}
-          <div className="mb-8">
-            <h4 className="font-semibold mb-4">Price Range</h4>
-            <div className="space-y-4">
-              <input
-                type="range"
-                min="0"
-                max="200"
-                value={filters.priceRange[1]}
-                onChange={(e) => handlePriceChange(Number(e.target.value))}
-                className="w-full accent-tiventi-orange"
-              />
-              <div className="flex justify-between text-sm text-gray-600">
-                <span>$0</span>
-                <span>${filters.priceRange[1]}</span>
-              </div>
-            </div>
-          </div>
-
           {/* Clear Filters */}
-          <button
-            onClick={clearFilters}
-            className="w-full py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            Clear All Filters
-          </button>
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="w-full mt-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Clear All Filters
+            </button>
+          )}
         </motion.div>
       </motion.div>
     </>

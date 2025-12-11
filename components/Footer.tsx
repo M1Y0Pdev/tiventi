@@ -96,8 +96,13 @@ const Footer = ({ className = '' }: { className?: string }) => {
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-gray-400 hover:text-tiventi-orange transition-colors">
+                <Link href="/policies/return" className="text-gray-400 hover:text-tiventi-orange transition-colors">
                   İade ve Değişim
+                </Link>
+              </li>
+              <li>
+                <Link href="/policies/shipping" className="text-gray-400 hover:text-tiventi-orange transition-colors">
+                  Kargo Politikası
                 </Link>
               </li>
             </ul>
@@ -146,14 +151,17 @@ const Footer = ({ className = '' }: { className?: string }) => {
               © 2024 Tiventi. Tüm hakları saklıdır.
             </p>
             <div className="flex space-x-4 mt-4 md:mt-0">
-              <Link href="#" className="text-gray-400 hover:text-tiventi-orange text-sm transition-colors">
+              <Link href="/policies/privacy" className="text-gray-400 hover:text-tiventi-orange text-sm transition-colors">
                 Gizlilik Politikası
               </Link>
-              <Link href="#" className="text-gray-400 hover:text-tiventi-orange text-sm transition-colors">
+              <Link href="/policies/terms" className="text-gray-400 hover:text-tiventi-orange text-sm transition-colors">
                 Kullanım Şartları
               </Link>
-              <Link href="#" className="text-gray-400 hover:text-tiventi-orange text-sm transition-colors">
+              <Link href="/policies/cookie" className="text-gray-400 hover:text-tiventi-orange text-sm transition-colors">
                 Çerez Politikası
+              </Link>
+              <Link href="/policies/legal-notice" className="text-gray-400 hover:text-tiventi-orange text-sm transition-colors">
+                Mesafeli Satış Sözleşmesi
               </Link>
             </div>
           </div>

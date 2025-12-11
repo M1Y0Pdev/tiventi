@@ -4,12 +4,11 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import ProductCard from './ProductCard'
-import { products } from '@/lib/data'
+import { Product } from '@/types'
 
-const FeaturedSlider = () => {
+const FeaturedSlider = ({ featuredProducts }: { featuredProducts: Product[] }) => {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [itemsPerView, setItemsPerView] = useState(4)
-  const featuredProducts = products.filter(p => p.isNew || p.isBestSeller)
 
   useEffect(() => {
     const handleResize = () => {
@@ -23,6 +22,10 @@ const FeaturedSlider = () => {
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
+
+  if (!featuredProducts || featuredProducts.length === 0) {
+    return null; // Don't render anything if there are no featured products
+  }
 
   const maxIndex = Math.max(0, featuredProducts.length - itemsPerView)
 
