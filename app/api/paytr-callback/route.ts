@@ -84,7 +84,7 @@ export async function POST(request: Request) {
   }
   
   // Revalidate paths for updated order (e.g., account page order history)
-  revalidatePath('/account'); 
+
 
   // 3. Return 'OK' to PayTR to confirm successful processing
   return new Response('OK', { status: 200 });
