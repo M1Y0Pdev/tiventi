@@ -47,16 +47,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
       console.error('Error fetching cart from DB:', error);
       setCartItems([]);
     } else {
-      const validItems = data.filter(item => item.products);
-      const fetchedCartItems: CartItem[] = validItems.map(item => ({
-        product: {
-          ...item.products,
-          category_name: item.products.categories?.name,
-        } as Product,
-        quantity: item.quantity,
-        selectedSize: item.size,
-        selectedColor: item.color,
-      }));
+      const fetchedCartItems: CartItem[] = data
+        .filter(item => item.products && Array.isArray(item.products) && item.products.length > 0)
+        .map(item => {
+          const productWithCategory = item.products[0];
+          const { categories, ...productData } = productWithCategory;
+
+          return {
+            product: {
+              ...productData,
+              category_name: categories?.name,
+            } as Product,
+            quantity: item.quantity,
+            selectedSize: item.size,
+            selectedColor: item.color,
+          };
+        });
       setCartItems(fetchedCartItems);
     }
     setIsLoading(false);

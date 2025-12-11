@@ -43,7 +43,7 @@ function SearchContent() {
       } else {
         const filtered = products.filter(product =>
           product.name.toLowerCase().includes(query.toLowerCase()) ||
-          product.category.toLowerCase().includes(query.toLowerCase()) ||
+          product.category_name?.toLowerCase().includes(query.toLowerCase()) ||
           product.description?.toLowerCase().includes(query.toLowerCase())
         )
         setSearchResults(filtered)

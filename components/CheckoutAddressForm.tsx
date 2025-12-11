@@ -154,7 +154,7 @@ export default function CheckoutAddressForm({ initialAddresses, selectedAddressI
                                         id={`address-${address.id}`} 
                                         value={address.id} 
                                         checked={selectedAddressId === address.id} 
-                                        onChange={() => setSelectedAddressId(address.id)}
+                                        onChange={() => onSelectAddress(address.id)}
                                         className="mr-3 accent-tiventi-orange"
                                         disabled={loading}
                                     />

@@ -24,7 +24,7 @@ const modal = {
     opacity: 1,
     transition: { delay: 0.2, type: "spring", stiffness: 120 }
   },
-}
+} as const
 
 export default function AddedToCartModal({ isOpen, onClose, item }: AddedToCartModalProps) {
   if (!item) return null
