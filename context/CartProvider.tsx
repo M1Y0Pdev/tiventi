@@ -50,14 +50,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
         setCartItems([]);
       } else {
         const fetchedCartItems: CartItem[] = data
-          .filter(item => item.products && Array.isArray(item.products) && item.products.length > 0)
+          .filter(item => item.products) // product'ın null olmadığından emin ol
           .map(item => {
-            const productWithCategory = item.products[0];
+            // 'products' bir nesnedir çünkü bu bir çoğa-bir ilişkidir
+            const productWithCategory = item.products as any;
             const { categories, ...productData } = productWithCategory;
 
             return {
               product: {
                 ...productData,
+                // 'categories' de bir nesnedir
                 category_name: categories?.name,
               } as Product,
               quantity: item.quantity,
