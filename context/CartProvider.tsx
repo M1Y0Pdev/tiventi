@@ -79,46 +79,38 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [supabase]);
 
-  // Simplified useEffect to handle all auth states
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
+
+  // Effect for the one-time initial load of the cart
   useEffect(() => {
-    // We need a flag to prevent state updates after the component has unmounted
-    let isMounted = true;
+    if (initialLoadDone) {
+      return;
+    }
 
-    // This function runs once to load the initial state of the cart
     const loadInitialCart = async () => {
-      // Actively fetch the session instead of waiting for the listener
       const { data: { session } } = await supabase.auth.getSession();
-
-      if (isMounted) {
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          // fetchAndSetDbCart will set loading states internally
-          await fetchAndSetDbCart(session.user.id);
-        } else {
-          // Manually handle loading for guest cart
-          setIsLoading(true);
-
-          const localCartString = localStorage.getItem('tiventi-cart');
-          setCartItems(localCartString ? JSON.parse(localCartString) : []);
-          
-          setIsLoading(false);
-        }
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        await fetchAndSetDbCart(session.user.id);
+      } else {
+        setIsLoading(true);
+        const localCartString = localStorage.getItem('tiventi-cart');
+        setCartItems(localCartString ? JSON.parse(localCartString) : []);
+        setIsLoading(false);
       }
+      setInitialLoadDone(true);
     };
-
+    
     loadInitialCart();
+  }, [initialLoadDone, supabase, fetchAndSetDbCart]);
 
-    // This listener only reacts to subsequent SIGNED_IN or SIGNED_OUT events
+  // Effect for listening to auth changes (login/logout)
+  useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (!isMounted) {
-          return;
-        }
-
-        // Update user state on any auth event
         setUser(session?.user ?? null);
         
-        // Re-sync cart only on login/logout
         if (event === 'SIGNED_IN') {
           await fetchAndSetDbCart(session!.user.id);
         } else if (event === 'SIGNED_OUT') {
@@ -128,12 +120,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // Cleanup function to unsubscribe and prevent memory leaks
-    return () => {
-      isMounted = false;
-      subscription?.unsubscribe();
-    };
-    // fetchAndSetDbCart is a useCallback, so it's stable.
+    return () => subscription?.unsubscribe();
   }, [supabase, fetchAndSetDbCart]);
 
   // For guests, save cart to localStorage whenever it changes
