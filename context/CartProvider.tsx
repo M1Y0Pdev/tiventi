@@ -33,39 +33,48 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalItem, setModalItem] = useState<CartItem | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  
+
   const [supabase] = useState(() => createClient());
 
   const fetchAndSetDbCart = useCallback(async (userId: string) => {
-    setIsLoading(true);
-    const { data, error } = await supabase
-      .from('cart_items')
-      .select('quantity, size, color, products(*, categories(name))')
-      .eq('user_id', userId);
+    try {
+      setIsLoading(true);
+      console.log('Fetching cart for user:', userId);
+      const { data, error } = await supabase
+        .from('cart_items')
+        .select('quantity, size, color, products(*, categories(name))')
+        .eq('user_id', userId);
 
-    if (error) {
-      console.error('Error fetching cart from DB:', error);
+      if (error) {
+        console.error('Error fetching cart from DB:', error);
+        setCartItems([]);
+      } else {
+        const fetchedCartItems: CartItem[] = data
+          .filter(item => item.products && Array.isArray(item.products) && item.products.length > 0)
+          .map(item => {
+            const productWithCategory = item.products[0];
+            const { categories, ...productData } = productWithCategory;
+
+            return {
+              product: {
+                ...productData,
+                category_name: categories?.name,
+              } as Product,
+              quantity: item.quantity,
+              selectedSize: item.size,
+              selectedColor: item.color,
+            };
+          });
+        console.log('Cart items fetched:', fetchedCartItems.length);
+        setCartItems(fetchedCartItems);
+      }
+    } catch (err) {
+      console.error('Unexpected error in fetchAndSetDbCart:', err);
+      // Fallback to empty cart on critical error to prevent infinite loading
       setCartItems([]);
-    } else {
-      const fetchedCartItems: CartItem[] = data
-        .filter(item => item.products && Array.isArray(item.products) && item.products.length > 0)
-        .map(item => {
-          const productWithCategory = item.products[0];
-          const { categories, ...productData } = productWithCategory;
-
-          return {
-            product: {
-              ...productData,
-              category_name: categories?.name,
-            } as Product,
-            quantity: item.quantity,
-            selectedSize: item.size,
-            selectedColor: item.color,
-          };
-        });
-      setCartItems(fetchedCartItems);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, [supabase]);
 
   // Simplified useEffect to handle all auth states
@@ -96,7 +105,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // For guests, save cart to localStorage whenever it changes
   useEffect(() => {
     if (!isLoading && !user) {
-        localStorage.setItem('tiventi-cart', JSON.stringify(cartItems));
+      localStorage.setItem('tiventi-cart', JSON.stringify(cartItems));
     }
   }, [cartItems, isLoading, user]);
 
@@ -131,7 +140,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setCartItems(prev => prev.filter(item => !(item.product.id === productId && item.selectedSize === size && item.selectedColor === color)));
     }
   }, [user, supabase, fetchAndSetDbCart]);
-  
+
   const clearCart = useCallback(async () => {
     if (user) {
       await supabase.from('cart_items').delete().eq('user_id', user.id);
@@ -142,7 +151,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [user, supabase, fetchAndSetDbCart]);
 
   const updateQuantity = useCallback(async (productId: number, size: string, color: string, newQuantity: number) => {
-     if (newQuantity <= 0) {
+    if (newQuantity <= 0) {
       await removeFromCart(productId, size, color);
       return;
     }
@@ -150,10 +159,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       await supabase.from('cart_items').update({ quantity: newQuantity }).match({ user_id: user.id, product_id: productId, size: size, color: color });
       await fetchAndSetDbCart(user.id);
     } else {
-      setCartItems(prev => prev.map(item => 
+      setCartItems(prev => prev.map(item =>
         item.product.id === productId && item.selectedSize === size && item.selectedColor === color
-        ? { ...item, quantity: newQuantity }
-        : item
+          ? { ...item, quantity: newQuantity }
+          : item
       ));
     }
   }, [user, supabase, fetchAndSetDbCart, removeFromCart]);
