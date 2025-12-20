@@ -81,27 +81,59 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // Simplified useEffect to handle all auth states
   useEffect(() => {
-    // Set initial loading to true
-    setIsLoading(true);
+    // We need a flag to prevent state updates after the component has unmounted
+    let isMounted = true;
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
+    // This function runs once to load the initial state of the cart
+    const loadInitialCart = async () => {
+      // Actively fetch the session instead of waiting for the listener
+      const { data: { session } } = await supabase.auth.getSession();
 
-      if (currentUser) {
-        // This handles INITIAL_SESSION and SIGNED_IN events
-        await fetchAndSetDbCart(currentUser.id);
-      } else {
-        // This handles SIGNED_OUT and initial state with no session
-        const localCartString = localStorage.getItem('tiventi-cart');
-        setCartItems(localCartString ? JSON.parse(localCartString) : []);
-        setIsLoading(false);
+      if (isMounted) {
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          // fetchAndSetDbCart will set loading states internally
+          await fetchAndSetDbCart(session.user.id);
+        } else {
+          // Manually handle loading for guest cart
+          setIsLoading(true);
+
+          const localCartString = localStorage.getItem('tiventi-cart');
+          setCartItems(localCartString ? JSON.parse(localCartString) : []);
+          
+          setIsLoading(false);
+        }
       }
-    });
-
-    return () => {
-      authListener.subscription.unsubscribe();
     };
+
+    loadInitialCart();
+
+    // This listener only reacts to subsequent SIGNED_IN or SIGNED_OUT events
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!isMounted) {
+          return;
+        }
+
+        // Update user state on any auth event
+        setUser(session?.user ?? null);
+        
+        // Re-sync cart only on login/logout
+        if (event === 'SIGNED_IN') {
+          await fetchAndSetDbCart(session!.user.id);
+        } else if (event === 'SIGNED_OUT') {
+          const localCartString = localStorage.getItem('tiventi-cart');
+          setCartItems(localCartString ? JSON.parse(localCartString) : []);
+        }
+      }
+    );
+
+    // Cleanup function to unsubscribe and prevent memory leaks
+    return () => {
+      isMounted = false;
+      subscription?.unsubscribe();
+    };
+    // fetchAndSetDbCart is a useCallback, so it's stable.
   }, [supabase, fetchAndSetDbCart]);
 
   // For guests, save cart to localStorage whenever it changes
